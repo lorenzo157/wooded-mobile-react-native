@@ -67,9 +67,11 @@ export default function SelectPicker({ label, options, value, onChange, multiple
                 </TouchableOpacity>
               )}
             />
-            <TouchableOpacity style={styles.closeButton} onPress={() => setVisible(false)}>
-              <Text style={styles.closeButtonText}>OK</Text>
-            </TouchableOpacity>
+            {multiple && (
+              <TouchableOpacity style={styles.closeButton} onPress={() => setVisible(false)}>
+                <Text style={styles.closeButtonText}>OK</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </Modal>

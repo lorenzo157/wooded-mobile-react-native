@@ -5,9 +5,10 @@ import { authService } from '../services/auth.service';
 
 interface HeightMeasureProps {
   onHeightChange: (height: number) => void;
+  children?: React.ReactNode;
 }
 
-export default function HeightMeasure({ onHeightChange }: HeightMeasureProps) {
+export default function HeightMeasure({ onHeightChange, children }: HeightMeasureProps) {
   const [distance, setDistance] = useState(10);
   const [userHeight, setUserHeight] = useState(1.7);
   const [mode, setMode] = useState<'idle' | 'distance' | 'height'>('idle');
@@ -57,62 +58,165 @@ export default function HeightMeasure({ onHeightChange }: HeightMeasureProps) {
   const isHeighting = isMeasuring && mode === 'height';
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity
-        style={[styles.distanceButton, (!canStart() || isMeasuring) && styles.buttonDisabled]}
-        onPress={startDistance}
-        disabled={!canStart() || isMeasuring}
-      >
-        <Text style={styles.buttonText}>
-          {isDistancing ? 'Calculando distancia...' : 'Medir distancia'}
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.stopButton, !isDistancing && styles.buttonDisabled]}
-        onPress={stopDistance}
-        disabled={!isDistancing}
-      >
-        <Text style={styles.buttonText}>Detener</Text>
-      </TouchableOpacity>
+    <View style={styles.card}>
+      <View style={styles.header}>
+        <Text style={styles.icon}>📏</Text>
+        <Text style={styles.title}>Altura</Text>
+      </View>
+      <Text style={styles.hint}>Primero mida la distancia, luego la altura</Text>
 
-      <View style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>Distancia entre usted y el arbol (metros)</Text>
-        <TextInput
-          style={styles.input}
-          keyboardType="numeric"
-          value={String(distance)}
-          onChangeText={(text) => setDistance(Number(text) || 0)}
-        />
+      {/* Step 1: Distance */}
+      <View style={styles.step}>
+        <View style={styles.stepHeader}>
+          <View style={styles.stepBadge}>
+            <Text style={styles.stepBadgeText}>1</Text>
+          </View>
+          <Text style={styles.stepTitle}>Distancia</Text>
+        </View>
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            style={[styles.distanceButton, (!canStart || isMeasuring) && styles.buttonDisabled]}
+            onPress={startDistance}
+            disabled={!canStart || isMeasuring}
+          >
+            <Text style={styles.buttonText}>
+              {isDistancing ? 'Midiendo...' : 'Medir'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.stopButton, !isDistancing && styles.buttonDisabled]}
+            onPress={stopDistance}
+            disabled={!isDistancing}
+          >
+            <Text style={styles.buttonText}>Detener</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.valueRow}>
+          <Text style={styles.valueLabel}>Distancia (m):</Text>
+          <TextInput
+            style={styles.valueInput}
+            keyboardType="numeric"
+            value={String(distance)}
+            onChangeText={(text) => setDistance(Number(text) || 0)}
+          />
+        </View>
       </View>
 
-      <TouchableOpacity
-        style={[styles.heightButton, (!canStart() || isMeasuring) && styles.buttonDisabled]}
-        onPress={startHeight}
-        disabled={!canStart() || isMeasuring}
-      >
-        <Text style={styles.buttonText}>
-          {isHeighting ? 'Calculando altura...' : 'Medir altura'}
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.stopButton, !isHeighting && styles.buttonDisabled]}
-        onPress={stopHeight}
-        disabled={!isHeighting}
-      >
-        <Text style={styles.buttonText}>Detener</Text>
-      </TouchableOpacity>
+      {/* Divider */}
+      <View style={styles.divider} />
+
+      {/* Step 2: Height */}
+      <View style={styles.step}>
+        <View style={styles.stepHeader}>
+          <View style={[styles.stepBadge, { backgroundColor: '#1976D2' }]}>
+            <Text style={styles.stepBadgeText}>2</Text>
+          </View>
+          <Text style={styles.stepTitle}>Altura</Text>
+        </View>
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            style={[styles.heightButton, (!canStart || isMeasuring) && styles.buttonDisabled]}
+            onPress={startHeight}
+            disabled={!canStart || isMeasuring}
+          >
+            <Text style={styles.buttonText}>
+              {isHeighting ? 'Midiendo...' : 'Medir'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.stopButton, !isHeighting && styles.buttonDisabled]}
+            onPress={stopHeight}
+            disabled={!isHeighting}
+          >
+            <Text style={styles.buttonText}>Detener</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+      {children && <View style={styles.childrenWrapper}>{children}</View>}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 8, marginBottom: 8 },
-  distanceButton: { backgroundColor: '#7B1FA2', padding: 12, borderRadius: 8, alignItems: 'center' },
-  heightButton: { backgroundColor: '#1976D2', padding: 12, borderRadius: 8, alignItems: 'center' },
-  stopButton: { backgroundColor: '#d32f2f', padding: 12, borderRadius: 8, alignItems: 'center' },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: '#fff', fontWeight: 'bold' },
-  inputContainer: { marginVertical: 4 },
-  inputLabel: { color: '#555', fontSize: 13, marginBottom: 4 },
-  input: { borderBottomWidth: 1, borderBottomColor: '#ddd', paddingVertical: 8, fontSize: 16 },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    elevation: 2,
+    borderLeftWidth: 4,
+    borderLeftColor: '#1976D2',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  icon: { fontSize: 18, marginRight: 8 },
+  title: { fontSize: 15, fontWeight: 'bold', color: '#333' },
+  hint: { fontSize: 12, color: '#888', marginBottom: 12 },
+  step: { marginBottom: 4 },
+  stepHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  stepBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#7B1FA2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  stepBadgeText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
+  stepTitle: { fontSize: 14, fontWeight: '600', color: '#555' },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 6,
+  },
+  distanceButton: {
+    flex: 1,
+    backgroundColor: '#7B1FA2',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  heightButton: {
+    flex: 1,
+    backgroundColor: '#1976D2',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  stopButton: {
+    flex: 1,
+    backgroundColor: '#d32f2f',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  buttonDisabled: { opacity: 0.4 },
+  buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
+  valueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  valueLabel: { color: '#555', fontSize: 13, marginRight: 8 },
+  valueInput: {
+    flex: 1,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    paddingVertical: 4,
+    fontSize: 16,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#eee',
+    marginVertical: 10,
+  },
+  childrenWrapper: { marginTop: 10, borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 10 },
 });

@@ -5,13 +5,21 @@ import { jwtDecode } from 'jwt-decode';
 
 export const authService = {
   async login(email: string, password: string): Promise<LoginResponse> {
-    console.log("🚀 ~ password:", password)
-    console.log("🚀 ~ email:", email)
-    const response = await fetch(`${API}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    let response: Response;
+    try {
+      response = await fetch(`${API}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+        signal: controller.signal,
+      });
+    } catch {
+      throw { status: 0, error: null };
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!response.ok) {
       const error = await response.json().catch(() => null);

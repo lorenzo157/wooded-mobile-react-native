@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Accelerometer } from 'expo-sensors';
+import { Alert } from 'react-native';
 
 interface AccelerometerData {
   x: number;
@@ -7,59 +8,58 @@ interface AccelerometerData {
   z: number;
 }
 
-// Singleton coordinator with subscriber notifications
+// Simple shared state: which component is currently measuring
 let activeComponent: string | null = null;
-const listeners = new Set<() => void>();
-
-function getActiveComponent() {
-  return activeComponent;
-}
-
-function subscribe(callback: () => void) {
-  listeners.add(callback);
-  return () => listeners.delete(callback);
-}
-
-function setActiveComponent(id: string | null) {
-  activeComponent = id;
-  listeners.forEach((cb) => cb());
-}
 
 export function useAccelerometer(componentId: string) {
   const [data, setData] = useState<AccelerometerData>({ x: 0, y: 0, z: 0 });
   const [isMeasuring, setIsMeasuring] = useState(false);
+  const [blocked, setBlocked] = useState(false);
   const subscriptionRef = useRef<ReturnType<typeof Accelerometer.addListener> | null>(null);
 
-  // Re-render when activeComponent changes in any component
-  const currentActive = useSyncExternalStore(subscribe, getActiveComponent);
+  // Poll activeComponent to update disabled state
+  // This is simpler and more reliable than useSyncExternalStore in RN
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const isBlocked = activeComponent !== null && activeComponent !== componentId;
+      setBlocked(isBlocked);
+    }, 300);
+    return () => clearInterval(interval);
+  }, [componentId]);
 
-  const canStart = useCallback(() => {
-    return !currentActive || currentActive === componentId;
-  }, [currentActive, componentId]);
+  const canStart = !blocked && !isMeasuring;
 
-  const start = useCallback(async () => {
-    if (isMeasuring || !canStart()) return false;
+  const start = async () => {
+    const available = await Accelerometer.isAvailableAsync();
+    if (!available) {
+      Alert.alert('Error', 'El acelerometro no esta disponible en este dispositivo.');
+      return false;
+    }
+    if (activeComponent && activeComponent !== componentId) return false;
+    if (isMeasuring) return false;
 
-    setActiveComponent(componentId);
+    activeComponent = componentId;
+    setBlocked(false);
     Accelerometer.setUpdateInterval(100);
     subscriptionRef.current = Accelerometer.addListener((accelData) => {
       setData(accelData);
     });
     setIsMeasuring(true);
     return true;
-  }, [componentId, isMeasuring, canStart]);
+  };
 
-  const stop = useCallback(() => {
+  const stop = () => {
     if (subscriptionRef.current) {
       subscriptionRef.current.remove();
       subscriptionRef.current = null;
     }
     if (activeComponent === componentId) {
-      setActiveComponent(null);
+      activeComponent = null;
     }
     setIsMeasuring(false);
-  }, [componentId]);
+  };
 
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (subscriptionRef.current) {
@@ -67,7 +67,7 @@ export function useAccelerometer(componentId: string) {
         subscriptionRef.current = null;
       }
       if (activeComponent === componentId) {
-        setActiveComponent(null);
+        activeComponent = null;
       }
     };
   }, [componentId]);

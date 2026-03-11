@@ -57,8 +57,9 @@ export default function LoginScreen({ navigation }: Props) {
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.card}>
-          {/* Logo placeholder */}
+          {/* Logo */}
           <View style={styles.logoContainer}>
+            <Image source={require('../../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
             <Text style={styles.appTitle}>Yvira</Text>
             <Text style={styles.subtitle}>¡Bienvenido!</Text>
           </View>
@@ -149,6 +150,11 @@ const styles = StyleSheet.create({
   logoContainer: {
     alignItems: 'center',
     marginBottom: 24,
+  },
+  logo: {
+    width: 100,
+    height: 100,
+    marginBottom: 16,
   },
   appTitle: {
     fontSize: 32,

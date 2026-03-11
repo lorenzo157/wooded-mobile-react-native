@@ -13,6 +13,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/AppNavigator';
 import { treeService } from '../../services/tree.service';
 import { ReadTreeDto, ReadDefectTreeDto } from '../../types/tree.types';
+import { API } from '../../constants/API';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DetailTree'>;
 
@@ -71,12 +72,18 @@ function ListItems({ label, items }: { label: string; items: string[] }) {
   );
 }
 
+function fixPhotoUrl(url: string): string {
+  return url.replace(/http:\/\/localhost:\d+/, API);
+}
+
 export default function DetailTreeScreen({ route, navigation }: Props) {
   const { idTree, idProject, projectType } = route.params;
   const [tree, setTree] = useState<ReadTreeDto | null>(null);
   const [loading, setLoading] = useState(true);
+  const [photoError, setPhotoError] = useState(false);
 
   useEffect(() => {
+    setPhotoError(false);
     loadTree();
   }, [idTree]);
 
@@ -107,9 +114,18 @@ export default function DetailTreeScreen({ route, navigation }: Props) {
         <Text style={styles.title}>ID: {tree.idTree}</Text>
         <Text style={styles.subtitle}>{tree.address}</Text>
 
-        {tree.pathPhoto ? (
-          <Image source={{ uri: tree.pathPhoto }} style={styles.photo} resizeMode="cover" />
-        ) : null}
+        {tree.pathPhoto && !photoError ? (
+          <Image
+            source={{ uri: fixPhotoUrl(tree.pathPhoto) }}
+            style={styles.photo}
+            resizeMode="contain"
+            onError={() => setPhotoError(true)}
+          />
+        ) : (
+          <View style={styles.noPhoto}>
+            <Text style={styles.noPhotoText}>Sin foto</Text>
+          </View>
+        )}
 
         <InfoRow label="Nivel de riesgo:" value={tree.risk || 'N/A'} />
         <InfoRow label="Fecha de relevo:" value={tree.datetime ? new Date(tree.datetime).toLocaleDateString('es-AR') : 'N/A'} />
@@ -209,7 +225,9 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#fff', margin: 12, borderRadius: 12, padding: 16, elevation: 3 },
   title: { fontSize: 22, fontWeight: 'bold', color: '#333' },
   subtitle: { fontSize: 15, color: '#666', marginBottom: 12 },
-  photo: { width: '100%', height: 200, borderRadius: 8, marginBottom: 12 },
+  photo: { width: '100%', height: 300, borderRadius: 8, marginBottom: 12 },
+  noPhoto: { width: '100%', height: 200, borderRadius: 8, marginBottom: 12, backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center' },
+  noPhotoText: { color: '#999', fontSize: 16, fontStyle: 'italic' },
   infoRow: { flexDirection: 'row', paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: '#eee' },
   infoLabel: { fontWeight: 'bold', color: '#555', width: 140 },
   infoValue: { color: '#333', flex: 1 },

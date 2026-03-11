@@ -65,6 +65,11 @@ export default function ListTreesScreen({ route, navigation }: Props) {
         </View>
       </View>
       <Text style={styles.treeAddress}>{item.address}</Text>
+      {item.datetime && (
+        <Text style={styles.treeDate}>
+          {new Date(item.datetime).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+        </Text>
+      )}
       {item.treeValue && (
         <Text style={styles.treeValue}>Valor: {item.treeValue}</Text>
       )}
@@ -132,6 +137,7 @@ const styles = StyleSheet.create({
   },
   riskText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
   treeAddress: { fontSize: 14, color: '#555' },
-  treeValue: { fontSize: 13, color: '#888', marginTop: 4 },
+  treeDate: { fontSize: 13, color: '#888', marginTop: 2 },
+  treeValue: { fontSize: 13, color: '#888', marginTop: 2 },
   emptyText: { textAlign: 'center', color: '#888', marginTop: 40, fontSize: 15 },
 });

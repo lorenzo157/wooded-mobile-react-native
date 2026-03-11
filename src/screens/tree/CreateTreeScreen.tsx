@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -52,15 +52,39 @@ function defectOptions(map: Defects.NumberToStringMap, nullLabel: string) {
   ];
 }
 
-function SectionHeader({ title, color }: { title: string; color: string }) {
+function SectionHeader({ title, icon, color }: { title: string; icon: string; color: string }) {
   return (
     <View style={[styles.sectionHeader, { backgroundColor: color }]}>
+      <Text style={styles.sectionHeaderIcon}>{icon}</Text>
       <Text style={styles.sectionHeaderText}>{title}</Text>
     </View>
   );
 }
 
-function FormField({ label, children }: { label?: string; children: React.ReactNode }) {
+function StyledSwitch({ value, onValueChange }: { value: boolean; onValueChange: (v: boolean) => void }) {
+  return (
+    <Switch
+      value={value}
+      onValueChange={onValueChange}
+      trackColor={{ false: '#ccc', true: '#81C784' }}
+      thumbColor={value ? '#388E3C' : '#f4f3f4'}
+    />
+  );
+}
+
+function NestedGroup({ children }: { children: React.ReactNode }) {
+  return <View style={styles.nestedGroup}>{children}</View>;
+}
+
+function FormField({ label, children, row }: { label?: string; children: React.ReactNode; row?: boolean }) {
+  if (row) {
+    return (
+      <View style={styles.formFieldRow}>
+        {label ? <Text style={styles.fieldLabelRow}>{label}</Text> : null}
+        {children}
+      </View>
+    );
+  }
   return (
     <View style={styles.formField}>
       {label ? <Text style={styles.fieldLabel}>{label}</Text> : null}
@@ -382,28 +406,43 @@ export default function CreateTreeScreen({ route, navigation }: Props) {
   };
 
   // Validation
-  const isFormValid = () => {
-    if (!address || latitude == null || longitude == null) return false;
-    if (isMissing || isDead) return true;
+  const getMissingFields = (): string[] => {
+    const missing: string[] = [];
+    if (!address) missing.push('Dirección');
+    if (latitude == null || longitude == null) missing.push('Ubicación (GPS)');
+    if (isMissing || isDead) return missing;
 
-    if (!perimeter || !height || !incline) return false;
-    if (!windExposure || !vigor || !canopyDensity || !growthSpace) return false;
-    if (!treeTypeName) return false;
-    if (!potentialDamage) return false;
-    if (!nothingUnderTree && (!useUnderTheTree || frequencyUse == null)) return false;
-    if (projectType === 'muestreo' && !treesInTheBlock) return false;
-    if (projectType !== 'muestreo' && !treeValue) return false;
-    return true;
+    if (!perimeter) missing.push('Perímetro');
+    if (!height) missing.push('Altura');
+    if (!incline) missing.push('Inclinación');
+    if (!windExposure) missing.push('Exposición al viento');
+    if (!vigor) missing.push('Vigor');
+    if (!canopyDensity) missing.push('Densidad de copa');
+    if (!growthSpace) missing.push('Espacio de crecimiento');
+    if (!treeTypeName) missing.push('Tipo de árbol');
+    if (potentialDamage == null) missing.push('Potencial de daño al caerse');
+    if (!nothingUnderTree && !useUnderTheTree) missing.push('Uso debajo del árbol');
+    if (!nothingUnderTree && frequencyUse == null) missing.push('Frecuencia de uso');
+    if (projectType === 'muestreo' && !treesInTheBlock) missing.push('Árboles en la cuadra');
+    if (projectType !== 'muestreo' && !treeValue) missing.push('Valor del árbol');
+ 
+    return missing;
   };
 
   // Submit
   const onSubmit = async () => {
-    if (!isFormValid()) {
-      Alert.alert('Error', 'Complete todos los campos obligatorios por favor');
+    const missing = getMissingFields();
+    if (missing.length > 0) {
+      Alert.alert('Campos incompletos', `Falta completar:\n• ${missing.join('\n• ')}`);
       return;
     }
 
-    Alert.alert(operation, `Desea finalizar la ${operation} del arbol?`, [
+    const showInterventionWarning = interventionsNames.length === 0 && !isMissing && !isDead;
+    const message = showInterventionWarning
+      ? `Desea finalizar la ${operation} del arbol?\n\n⚠️ No se han seleccionado intervenciones.`
+      : `Desea finalizar la ${operation} del arbol?`;
+
+    Alert.alert(operation, message, [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Confirmar', onPress: submitTree },
     ]);
@@ -565,7 +604,7 @@ export default function CreateTreeScreen({ route, navigation }: Props) {
         if (windExposure === 'tunel de viento') newTree.risk! += 2;
         if (canopyDensity === 'escasa') newTree.risk! -= 1;
         if (canopyDensity === 'densa') newTree.risk! += 1;
-        if (frequencyUse) newTree.risk! += frequencyUse;
+        if (!nothingUnderTree && frequencyUse) newTree.risk! += frequencyUse;
         if (potentialDamage) newTree.risk! += potentialDamage;
 
         newTree.createDefectsDtos = newTree.createDefectsDtos.filter((d) => d.defectValue > 1);
@@ -603,6 +642,106 @@ export default function CreateTreeScreen({ route, navigation }: Props) {
     }
   };
 
+  // Defect summary by zone (must be before early return to respect hook rules)
+  const dch = perimeter ? Number(perimeter) / Math.PI / 100 : 0;
+  const { defectsRaiz, defectsTronco, defectsRama } = useMemo(() => {
+    const raiz: { label: string; value: string }[] = [];
+    const tronco: { label: string; value: string }[] = [];
+    const rama: { label: string; value: string }[] = [];
+
+    const defectFields: { val: string | null; entries: [string, string][]; label: string; zone: 'raiz' | 'tronco' | 'rama'; control?: string }[] = [
+      { val: fruitingBodiesRoots, entries: Object.entries(Defects.fruitingBodiesOfFungiOnNeckOrRoots), label: 'Cuerpos fructiferos de hongos en raices', zone: 'raiz' },
+      { val: mechanicalDamageRoots, entries: Object.entries(Defects.mechanicalDamageToRoots), label: 'Dano mecanico a raices', zone: 'raiz' },
+      { val: stranglingRoots, entries: Object.entries(Defects.stranglingRoots), label: 'Raices estrangulantes', zone: 'raiz' },
+      { val: deadRoots, entries: Object.entries(Defects.deadRoots), label: 'Raices muertas', zone: 'raiz' },
+      { val: symptomsDiseaseRoots, entries: Object.entries(Defects.symptomsDiseaseOfRootsInCrown), label: 'Sintomas de enfermedad radicular en copa', zone: 'raiz' },
+      { val: gallsTermites, entries: Object.entries(Defects.gallsTermiteMoundsAnthills), label: 'Agallas, termiteros, hormigueros', zone: 'tronco' },
+      { val: cankersTrunk, entries: Object.entries(Defects.cankersTrunk), label: 'Cancros de tronco', zone: 'tronco' },
+      { val: multipleTrunks, entries: Object.entries(Defects.multipleTrunks), label: 'Fustes multiples', zone: 'tronco' },
+      { val: forkTrunk, entries: Object.entries(Defects.forkTrunk), label: 'Horqueta de tronco', zone: 'tronco' },
+      { val: fissuresTrunk, entries: Object.entries(Defects.fissuresTrunk), label: 'Rajaduras de tronco', zone: 'tronco' },
+      { val: cankersBranch, entries: Object.entries(Defects.cankersBranch), label: 'Cancros de ramas', zone: 'rama' },
+      { val: cavitiesBranches, entries: Object.entries(Defects.cavitiesBranches), label: 'Cavidades en ramas', zone: 'rama' },
+      { val: fruitingBodiesBranch, entries: Object.entries(Defects.fruitingBodiesOfFungi), label: 'Cuerpos fructiferos de hongos', zone: 'rama' },
+      { val: forkBranch, entries: Object.entries(Defects.forkBranch), label: 'Horqueta de rama', zone: 'rama' },
+      { val: hangingBranches, entries: Object.entries(Defects.hangingOrBrokenBranches), label: 'Ramas colgantes o quebradas', zone: 'rama', control: 'hangingBranches' },
+      { val: deadBranches, entries: Object.entries(Defects.deadBranches), label: 'Ramas muertas', zone: 'rama', control: 'deadBranches' },
+      { val: overExtendedBranches, entries: Object.entries(Defects.overExtendedBranches), label: 'Ramas sobre extendidas', zone: 'rama' },
+      { val: fissuresBranches, entries: Object.entries(Defects.fissuresBranches), label: 'Rajaduras de ramas', zone: 'rama' },
+      { val: woodRotBranch, entries: Object.entries(Defects.woodRot), label: 'Pudricion de madera', zone: 'rama' },
+      { val: electricalGrid, entries: Object.entries(Defects.interferenceWithTheElectricalGrid), label: 'Interferencia con red electrica', zone: 'rama' },
+    ];
+
+    for (const field of defectFields) {
+      if (field.val) {
+        const entry = field.entries.find(([key]) => key === field.val);
+        if (entry) {
+          let desc = entry[1];
+          if (field.control === 'hangingBranches' && hangingBranchesCount) desc += ` (${hangingBranchesCount})`;
+          if (field.control === 'deadBranches' && deadBranchesCount) desc += ` (${deadBranchesCount})`;
+          const target = field.zone === 'raiz' ? raiz : field.zone === 'tronco' ? tronco : rama;
+          target.push({ label: field.label, value: desc });
+        }
+      }
+    }
+
+    // Inclination
+    const inclineNum = Number(incline);
+    if (inclineNum >= 10) {
+      let dv = 1;
+      if (inclineNum >= 10 && inclineNum < 20) dv = 2;
+      else if (inclineNum >= 20 && inclineNum < 30) dv = 3;
+      else if (inclineNum >= 30) dv = 4;
+      if (dv > 1) tronco.push({ label: 'Inclinacion', value: `${inclineNum}° - riesgo: ${dv}` });
+    }
+
+    // Cavities trunk
+    if (isCavitiesTrunk && cavitiesTrunkT) {
+      tronco.push({ label: 'Cavidades en tronco', value: `t = ${cavitiesTrunkT}` });
+    }
+
+    // Lost/dead bark
+    if (isLostOrDeadBark && lostOrDeadBarkWidth) {
+      tronco.push({ label: 'Corteza perdida o muerta', value: `ancho = ${lostOrDeadBarkWidth}` });
+    }
+
+    // Wounds
+    if (isWounds && woundsWidth) {
+      tronco.push({ label: 'Heridas en el tronco', value: `ancho = ${woundsWidth}` });
+    }
+
+    // Wood rot trunk
+    if (isWoodRot) {
+      if (isWoodRotFruitingBodies) {
+        tronco.push({ label: 'Pudricion de madera', value: 'con cuerpos fructiferos' });
+      } else if (woodRotT) {
+        tronco.push({ label: 'Pudricion de madera', value: `t = ${woodRotT}` });
+      }
+    }
+
+    // Slenderness
+    const heightNum = Number(height);
+    if (heightNum && dch) {
+      const sl = heightNum / dch;
+      let dv = 1;
+      if (sl > 60 && sl <= 80) dv = 2;
+      else if (sl > 80 && sl <= 100) dv = 3;
+      else if (sl > 100) dv = 4;
+      if (dv > 1) tronco.push({ label: 'Coeficiente de esbeltez', value: `${sl.toFixed(1)} - riesgo: ${dv}` });
+    }
+
+    return { defectsRaiz: raiz, defectsTronco: tronco, defectsRama: rama };
+  }, [
+    fruitingBodiesRoots, mechanicalDamageRoots, stranglingRoots, deadRoots, symptomsDiseaseRoots,
+    gallsTermites, cankersTrunk, multipleTrunks, forkTrunk, fissuresTrunk,
+    cankersBranch, cavitiesBranches, fruitingBodiesBranch, forkBranch,
+    hangingBranches, hangingBranchesCount, deadBranches, deadBranchesCount,
+    overExtendedBranches, fissuresBranches, woodRotBranch, electricalGrid,
+    isCavitiesTrunk, cavitiesTrunkT, isLostOrDeadBark, lostOrDeadBarkWidth,
+    isWounds, woundsWidth, isWoodRot, isWoodRotFruitingBodies, woodRotT,
+    incline, height, perimeter, dch,
+  ]);
+
   if (loading) {
     return <ActivityIndicator size="large" color="#388E3C" style={{ flex: 1 }} />;
   }
@@ -613,10 +752,10 @@ export default function CreateTreeScreen({ route, navigation }: Props) {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
         {/* LOCATION */}
-        <SectionHeader title="Ubicacion" color="#1976D2" />
+        <SectionHeader title="Ubicacion" icon="📍" color="#1976D2" />
 
-        <FormField label="Obtener posicion actual">
-          <Switch value={useGPS} onValueChange={onToggleGPS} />
+        <FormField label="Obtener posicion actual" row>
+          <StyledSwitch value={useGPS} onValueChange={onToggleGPS} />
         </FormField>
         {latitude != null && <Text style={styles.coordText}>Lat: {latitude}, Lon: {longitude}</Text>}
 
@@ -650,16 +789,16 @@ export default function CreateTreeScreen({ route, navigation }: Props) {
         )}
 
         {/* TREE CHARACTERISTICS */}
-        <SectionHeader title="Caracteristicas del arbol" color="#388E3C" />
+        <SectionHeader title="Caracteristicas del arbol" icon="🌳" color="#388E3C" />
 
         {!isDead && (
-          <FormField label="Es arbol faltante?">
-            <Switch value={isMissing} onValueChange={setIsMissing} />
+          <FormField label="Es arbol faltante?" row>
+            <StyledSwitch value={isMissing} onValueChange={setIsMissing} />
           </FormField>
         )}
         {!isMissing && (
-          <FormField label="Esta muerto?">
-            <Switch value={isDead} onValueChange={setIsDead} />
+          <FormField label="Esta muerto?" row>
+            <StyledSwitch value={isDead} onValueChange={setIsDead} />
           </FormField>
         )}
 
@@ -701,18 +840,18 @@ export default function CreateTreeScreen({ route, navigation }: Props) {
             )}
 
             {/* Tilt measurement */}
-            <SectionHeader title="Calculo de inclinacion" color="#795548" />
-            <TiltMeasure onTiltChange={(v) => setIncline(String(v))} />
-            <FormField label="Inclinacion (angulo en grados) *">
-              <TextInput style={styles.input} value={incline} onChangeText={setIncline} keyboardType="numeric" />
-            </FormField>
+            <TiltMeasure onTiltChange={(v) => setIncline(String(v))}>
+              <FormField label="Inclinacion (angulo en grados) *">
+                <TextInput style={styles.input} value={incline} onChangeText={setIncline} keyboardType="numeric" />
+              </FormField>
+            </TiltMeasure>
 
             {/* Height measurement */}
-            <SectionHeader title="Calculo de altura" color="#795548" />
-            <HeightMeasure onHeightChange={(v) => setHeight(String(v))} />
-            <FormField label="Altura (metros) *">
-              <TextInput style={styles.input} value={height} onChangeText={setHeight} keyboardType="numeric" />
-            </FormField>
+            <HeightMeasure onHeightChange={(v) => setHeight(String(v))}>
+              <FormField label="Altura (metros) *">
+                <TextInput style={styles.input} value={height} onChangeText={setHeight} keyboardType="numeric" />
+              </FormField>
+            </HeightMeasure>
 
             {/* Pests */}
             {pestsNames.map((pest, i) => (
@@ -741,23 +880,31 @@ export default function CreateTreeScreen({ route, navigation }: Props) {
             </TouchableOpacity>
 
             {/* LOAD FACTORS */}
-            <SectionHeader title="Factores de carga" color="#F9A825" />
+            <SectionHeader title="Factores de carga" icon="💨" color="#F9A825" />
             <SelectPicker label="Exposicion al viento *" options={windExposureOptions.map((o) => ({ label: o, value: o }))} value={windExposure} onChange={setWindExposure} />
             <SelectPicker label="Vigor *" options={vigorOptions.map((o) => ({ label: o, value: o }))} value={vigor} onChange={setVigor} />
             <SelectPicker label="Densidad de copa *" options={canopyDensityOptions.map((o) => ({ label: o, value: o }))} value={canopyDensity} onChange={setCanopyDensity} />
 
             {/* SITE CONDITIONS */}
-            <SectionHeader title="Condiciones del sitio" color="#7B1FA2" />
+            <SectionHeader title="Condiciones del sitio" icon="🌍" color="#7B1FA2" />
             <SelectPicker label="Espacio de crecimiento *" options={growthSpaceOptions.map((o) => ({ label: o, value: o }))} value={growthSpace} onChange={setGrowthSpace} />
-            <FormField label="Raices expuestas?">
-              <Switch value={exposedRoots} onValueChange={setExposedRoots} />
+            <FormField label="Raices expuestas?" row>
+              <StyledSwitch value={exposedRoots} onValueChange={setExposedRoots} />
             </FormField>
             <SelectPicker label="Conflictos" options={conflictOptions.map((o) => ({ label: o, value: o }))} value={conflictsNames} onChange={setConflictsNames} multiple />
+            {conflictsNames.length > 0 && (
+              <View style={styles.selectedList}>
+                <Text style={styles.selectedListTitle}>Conflictos seleccionados:</Text>
+                {conflictsNames.map((item, i) => (
+                  <Text key={i} style={styles.selectedItem}>- {item}</Text>
+                ))}
+              </View>
+            )}
 
             {/* TARGET UNDER TREE */}
-            <SectionHeader title="Blanco debajo del arbol" color="#D32F2F" />
-            <FormField label="No hay nada bajo el arbol">
-              <Switch value={nothingUnderTree} onValueChange={setNothingUnderTree} />
+            <SectionHeader title="Blanco debajo del arbol" icon="🎯" color="#D32F2F" />
+            <FormField label="No hay nada bajo el arbol" row>
+              <StyledSwitch value={nothingUnderTree} onValueChange={setNothingUnderTree} />
             </FormField>
             {!nothingUnderTree && (
               <>
@@ -770,17 +917,17 @@ export default function CreateTreeScreen({ route, navigation }: Props) {
                   value={frequencyUse}
                   onChange={setFrequencyUse}
                 />
-                <FormField label="Se puede mover el blanco?">
-                  <Switch value={isMovable} onValueChange={setIsMovable} />
+                <FormField label="Se puede mover el blanco?" row>
+                  <StyledSwitch value={isMovable} onValueChange={setIsMovable} />
                 </FormField>
-                <FormField label="Se puede restringir el blanco?">
-                  <Switch value={isRestrictable} onValueChange={setIsRestrictable} />
+                <FormField label="Se puede restringir el blanco?" row>
+                  <StyledSwitch value={isRestrictable} onValueChange={setIsRestrictable} />
                 </FormField>
               </>
             )}
 
             {/* DEFECTS - ROOTS */}
-            <SectionHeader title="Defectos en raices" color="#E65100" />
+            <SectionHeader title="Defectos en raices" icon="🌱" color="#E65100" />
             <SelectPicker label="Cuerpos fructiferos de hongos" options={defectOptions(Defects.fruitingBodiesOfFungiOnNeckOrRoots, 'sin cuerpos fructiferos')} value={fruitingBodiesRoots} onChange={setFruitingBodiesRoots} />
             <SelectPicker label="Dano mecanico a raices" options={defectOptions(Defects.mechanicalDamageToRoots, 'sin danos en raices')} value={mechanicalDamageRoots} onChange={setMechanicalDamageRoots} />
             <SelectPicker label="Raices estrangulantes" options={defectOptions(Defects.stranglingRoots, 'sin raices estrangulantes')} value={stranglingRoots} onChange={setStranglingRoots} />
@@ -788,51 +935,57 @@ export default function CreateTreeScreen({ route, navigation }: Props) {
             <SelectPicker label="Sintomas de enfermedad radicular en copa" options={defectOptions(Defects.symptomsDiseaseOfRootsInCrown, 'sin sintomas')} value={symptomsDiseaseRoots} onChange={setSymptomsDiseaseRoots} />
 
             {/* DEFECTS - TRUNK */}
-            <SectionHeader title="Defectos en tronco y cuello" color="#E65100" />
+            <SectionHeader title="Defectos en tronco y cuello" icon="🪵" color="#E65100" />
             <SelectPicker label="Agallas, termiteros, hormigueros" options={defectOptions(Defects.gallsTermiteMoundsAnthills, 'no se observa')} value={gallsTermites} onChange={setGallsTermites} />
             <SelectPicker label="Cancros de tronco o cuello" options={defectOptions(Defects.cankersTrunk, 'sin cancro')} value={cankersTrunk} onChange={setCankersTrunk} />
 
-            <FormField label="Tiene cavidades en el tronco?">
-              <Switch value={isCavitiesTrunk} onValueChange={setIsCavitiesTrunk} />
+            <FormField label="Tiene cavidades en el tronco?" row>
+              <StyledSwitch value={isCavitiesTrunk} onValueChange={setIsCavitiesTrunk} />
             </FormField>
             {isCavitiesTrunk && (
-              <FormField label="Mida el valor de t (cm)">
-                <TextInput style={styles.input} value={cavitiesTrunkT} onChangeText={setCavitiesTrunkT} keyboardType="numeric" />
-                {!cavitiesTrunkT && <Text style={styles.warningText}>Si no ingresa el valor de t, este defecto no se tendra en cuenta.</Text>}
-              </FormField>
+              <NestedGroup>
+                <FormField label="Mida el valor de t (cm)">
+                  <TextInput style={styles.input} value={cavitiesTrunkT} onChangeText={setCavitiesTrunkT} keyboardType="numeric" />
+                  {!cavitiesTrunkT && <Text style={styles.warningText}>Si no ingresa el valor de t, este defecto no se tendra en cuenta.</Text>}
+                </FormField>
+              </NestedGroup>
             )}
 
-            <FormField label="Hay corteza perdida o muerta?">
-              <Switch value={isLostOrDeadBark} onValueChange={setIsLostOrDeadBark} />
+            <FormField label="Hay corteza perdida o muerta?" row>
+              <StyledSwitch value={isLostOrDeadBark} onValueChange={setIsLostOrDeadBark} />
             </FormField>
             {isLostOrDeadBark && (
-              <FormField label="Mida el perimetro (cm) afectado">
-                <TextInput style={styles.input} value={lostOrDeadBarkWidth} onChangeText={setLostOrDeadBarkWidth} keyboardType="numeric" />
-                {!lostOrDeadBarkWidth && <Text style={styles.warningText}>Si no ingresa el perimetro afectado, este defecto no se tendra en cuenta.</Text>}
-              </FormField>
+              <NestedGroup>
+                <FormField label="Mida el perimetro (cm) afectado">
+                  <TextInput style={styles.input} value={lostOrDeadBarkWidth} onChangeText={setLostOrDeadBarkWidth} keyboardType="numeric" />
+                  {!lostOrDeadBarkWidth && <Text style={styles.warningText}>Si no ingresa el perimetro afectado, este defecto no se tendra en cuenta.</Text>}
+                </FormField>
+              </NestedGroup>
             )}
 
             <SelectPicker label="Fustes multiples" options={defectOptions(Defects.multipleTrunks, 'no')} value={multipleTrunks} onChange={setMultipleTrunks} />
 
-            <FormField label="Hay heridas en el tronco (no leves)?">
-              <Switch value={isWounds} onValueChange={setIsWounds} />
+            <FormField label="Hay heridas en el tronco (no leves)?" row>
+              <StyledSwitch value={isWounds} onValueChange={setIsWounds} />
             </FormField>
             {isWounds && (
-              <FormField label="Mida el perimetro (cm) afectado">
-                <TextInput style={styles.input} value={woundsWidth} onChangeText={setWoundsWidth} keyboardType="numeric" />
-                {!woundsWidth && <Text style={styles.warningText}>Si no ingresa el perimetro afectado, este defecto no se tendra en cuenta.</Text>}
-              </FormField>
+              <NestedGroup>
+                <FormField label="Mida el perimetro (cm) afectado">
+                  <TextInput style={styles.input} value={woundsWidth} onChangeText={setWoundsWidth} keyboardType="numeric" />
+                  {!woundsWidth && <Text style={styles.warningText}>Si no ingresa el perimetro afectado, este defecto no se tendra en cuenta.</Text>}
+                </FormField>
+              </NestedGroup>
             )}
 
             <SelectPicker label="Horqueta de tronco" options={defectOptions(Defects.forkTrunk, 'sin horqueta')} value={forkTrunk} onChange={setForkTrunk} />
 
-            <FormField label="Hay pudricion de madera?">
-              <Switch value={isWoodRot} onValueChange={(v) => { setIsWoodRot(v); if (!v) setIsWoodRotFruitingBodies(false); }} />
+            <FormField label="Hay pudricion de madera?" row>
+              <StyledSwitch value={isWoodRot} onValueChange={(v) => { setIsWoodRot(v); if (!v) setIsWoodRotFruitingBodies(false); }} />
             </FormField>
             {isWoodRot && (
-              <>
-                <FormField label="Es con presencia de cuerpos fructiferos?">
-                  <Switch value={isWoodRotFruitingBodies} onValueChange={setIsWoodRotFruitingBodies} />
+              <NestedGroup>
+                <FormField label="Es con presencia de cuerpos fructiferos?" row>
+                  <StyledSwitch value={isWoodRotFruitingBodies} onValueChange={setIsWoodRotFruitingBodies} />
                 </FormField>
                 {!isWoodRotFruitingBodies && (
                   <FormField label="Mida el valor de t (cm)">
@@ -840,30 +993,34 @@ export default function CreateTreeScreen({ route, navigation }: Props) {
                     {!woodRotT && <Text style={styles.warningText}>Ingrese el valor de t si no hay presencia de CF.</Text>}
                   </FormField>
                 )}
-              </>
+              </NestedGroup>
             )}
 
             <SelectPicker label="Rajaduras de tronco" options={defectOptions(Defects.fissuresTrunk, 'sin rajaduras')} value={fissuresTrunk} onChange={setFissuresTrunk} />
 
             {/* DEFECTS - BRANCHES */}
-            <SectionHeader title="Defectos en ramas" color="#E65100" />
+            <SectionHeader title="Defectos en ramas" icon="🌿" color="#E65100" />
             <SelectPicker label="Cancros de ramas" options={defectOptions(Defects.cankersBranch, 'sin cancro')} value={cankersBranch} onChange={setCankersBranch} />
             <SelectPicker label="Cavidades" options={defectOptions(Defects.cavitiesBranches, 'sin cavidades')} value={cavitiesBranches} onChange={setCavitiesBranches} />
             <SelectPicker label="Cuerpos fructiferos de hongos" options={defectOptions(Defects.fruitingBodiesOfFungi, 'sin cuerpos fructiferos')} value={fruitingBodiesBranch} onChange={setFruitingBodiesBranch} />
             <SelectPicker label="Horqueta de ramas" options={defectOptions(Defects.forkBranch, 'sin horqueta')} value={forkBranch} onChange={setForkBranch} />
 
-            <SelectPicker label="Ramas colgantes o quebradas" options={defectOptions(Defects.hangingOrBrokenBranches, 'sin ramas quebradas/colgantes')} value={hangingBranches} onChange={setHangingBranches} />
-            {Number(hangingBranches) > 2 && (
-              <FormField label="Cantidad de ramas colgantes o quebradas">
-                <TextInput style={styles.input} value={hangingBranchesCount} onChangeText={setHangingBranchesCount} keyboardType="numeric" />
-              </FormField>
+            <SelectPicker label="Ramas colgantes o quebradas" options={defectOptions(Defects.hangingOrBrokenBranches, 'sin ramas quebradas/colgantes')} value={hangingBranches} onChange={(v) => { setHangingBranches(v); if (v !== '4') setHangingBranchesCount(''); }} />
+            {hangingBranches === '4' && (
+              <NestedGroup>
+                <FormField label="Cantidad de ramas colgantes o quebradas *">
+                  <TextInput style={styles.input} value={hangingBranchesCount} onChangeText={setHangingBranchesCount} keyboardType="numeric" />
+                </FormField>
+              </NestedGroup>
             )}
 
-            <SelectPicker label="Ramas muertas" options={defectOptions(Defects.deadBranches, 'sin ramas muertas')} value={deadBranches} onChange={setDeadBranches} />
-            {Number(deadBranches) > 2 && (
-              <FormField label="Cantidad de ramas muertas">
-                <TextInput style={styles.input} value={deadBranchesCount} onChangeText={setDeadBranchesCount} keyboardType="numeric" />
-              </FormField>
+            <SelectPicker label="Ramas muertas" options={defectOptions(Defects.deadBranches, 'sin ramas muertas')} value={deadBranches} onChange={(v) => { setDeadBranches(v); if (v !== '4') setDeadBranchesCount(''); }} />
+            {deadBranches === '4' && (
+              <NestedGroup>
+                <FormField label="Cantidad de ramas muertas *">
+                  <TextInput style={styles.input} value={deadBranchesCount} onChangeText={setDeadBranchesCount} keyboardType="numeric" />
+                </FormField>
+              </NestedGroup>
             )}
 
             <SelectPicker label="Ramas sobre extendidas" options={defectOptions(Defects.overExtendedBranches, 'sin ramas sobreextendidas')} value={overExtendedBranches} onChange={setOverExtendedBranches} />
@@ -871,8 +1028,49 @@ export default function CreateTreeScreen({ route, navigation }: Props) {
             <SelectPicker label="Pudricion de madera" options={defectOptions(Defects.woodRot, 'ramas estructurales sin pudricion')} value={woodRotBranch} onChange={setWoodRotBranch} />
             <SelectPicker label="Interferencia con red electrica" options={defectOptions(Defects.interferenceWithTheElectricalGrid, 'sin interferencia con red electrica')} value={electricalGrid} onChange={setElectricalGrid} />
 
+            {/* DEFECT SUMMARY BY ZONE */}
+            <SectionHeader title="Defectos seleccionados por zona" icon="📋" color="#795548" />
+            <View style={styles.summaryCard}>
+              {defectsRaiz.length > 0 && (
+                <View style={styles.summaryZone}>
+                  <Text style={styles.summaryZoneTitle}>🌱 Defectos en Raices</Text>
+                  {defectsRaiz.map((d, i) => (
+                    <View key={i} style={styles.summaryRow}>
+                      <Text style={styles.summaryLabel}>{d.label}</Text>
+                      <Text style={styles.summaryValue}>{d.value}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              {defectsTronco.length > 0 && (
+                <View style={styles.summaryZone}>
+                  <Text style={styles.summaryZoneTitle}>🪵 Defectos en Tronco</Text>
+                  {defectsTronco.map((d, i) => (
+                    <View key={i} style={styles.summaryRow}>
+                      <Text style={styles.summaryLabel}>{d.label}</Text>
+                      <Text style={styles.summaryValue}>{d.value}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              {defectsRama.length > 0 && (
+                <View style={styles.summaryZone}>
+                  <Text style={styles.summaryZoneTitle}>🌿 Defectos en Ramas</Text>
+                  {defectsRama.map((d, i) => (
+                    <View key={i} style={styles.summaryRow}>
+                      <Text style={styles.summaryLabel}>{d.label}</Text>
+                      <Text style={styles.summaryValue}>{d.value}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              {defectsRaiz.length === 0 && defectsTronco.length === 0 && defectsRama.length === 0 && (
+                <Text style={styles.summaryEmpty}>No hay defectos de riesgo seleccionados.</Text>
+              )}
+            </View>
+
             {/* INTERVENTIONS */}
-            <SectionHeader title="Mitigacion del riesgo" color="#616161" />
+            <SectionHeader title="Mitigacion del riesgo" icon="🛡️" color="#616161" />
             <SelectPicker
               label="Potencial de dano del arbol o rama en caso de caerse *"
               options={potentialDamageOptions.map((o, i) => ({ label: o, value: i + 1 }))}
@@ -894,7 +1092,7 @@ export default function CreateTreeScreen({ route, navigation }: Props) {
         {/* Missing/Dead intervention info */}
         {(isMissing || isDead) && (
           <>
-            <SectionHeader title="Mitigacion del riesgo" color="#616161" />
+            <SectionHeader title="Mitigacion del riesgo" icon="🛡️" color="#616161" />
             <Text style={styles.autoIntervention}>
               {isMissing ? 'plantacion de arbol faltante' : 'extraccion del arbol'}
             </Text>
@@ -903,7 +1101,7 @@ export default function CreateTreeScreen({ route, navigation }: Props) {
 
         {/* Submit */}
         <TouchableOpacity
-          style={[styles.submitButton, (!isFormValid() || submitting) && styles.submitButtonDisabled]}
+          style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
           onPress={onSubmit}
           disabled={submitting}
         >
@@ -924,10 +1122,14 @@ export default function CreateTreeScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5', padding: 12 },
-  sectionHeader: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 6, marginTop: 16, marginBottom: 8 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 6, marginTop: 16, marginBottom: 8 },
+  sectionHeaderIcon: { fontSize: 16, marginRight: 8 },
   sectionHeaderText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
   formField: { marginBottom: 10 },
+  formFieldRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, paddingVertical: 6, paddingHorizontal: 4, backgroundColor: '#fff', borderRadius: 8, paddingLeft: 10, paddingRight: 6, elevation: 1 },
+  nestedGroup: { marginLeft: 12, paddingLeft: 12, borderLeftWidth: 3, borderLeftColor: '#388E3C', marginBottom: 8 },
   fieldLabel: { color: '#555', fontSize: 13, marginBottom: 4 },
+  fieldLabelRow: { color: '#333', fontSize: 14, flex: 1, marginRight: 8 },
   input: { borderBottomWidth: 1, borderBottomColor: '#ddd', paddingVertical: 8, fontSize: 16 },
   coordText: { color: '#888', fontSize: 13, marginBottom: 8, marginLeft: 4 },
   photoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 8 },
@@ -947,6 +1149,13 @@ const styles = StyleSheet.create({
   selectedListTitle: { fontWeight: 'bold', color: '#555', marginBottom: 4 },
   selectedItem: { color: '#555', marginLeft: 8, fontSize: 14 },
   autoIntervention: { padding: 12, color: '#555', fontSize: 15 },
+  summaryCard: { backgroundColor: '#fff', borderRadius: 10, padding: 14, marginBottom: 10, elevation: 2, borderLeftWidth: 4, borderLeftColor: '#795548' },
+  summaryZone: { marginBottom: 12 },
+  summaryZoneTitle: { fontSize: 14, fontWeight: 'bold', color: '#555', marginBottom: 6 },
+  summaryRow: { paddingVertical: 6, paddingHorizontal: 8, backgroundColor: '#FAFAFA', borderRadius: 4, marginBottom: 3 },
+  summaryLabel: { color: '#555', fontSize: 13, marginBottom: 2 },
+  summaryValue: { color: '#333', fontSize: 13, fontWeight: '600' },
+  summaryEmpty: { color: '#999', fontStyle: 'italic', fontSize: 13, textAlign: 'center', paddingVertical: 12 },
   submitButton: { backgroundColor: '#388E3C', paddingVertical: 16, borderRadius: 10, alignItems: 'center', marginTop: 16 },
   submitButtonDisabled: { opacity: 0.6 },
   submitButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 17 },

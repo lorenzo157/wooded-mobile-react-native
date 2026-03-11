@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import { RootStackParamList } from '../../navigation/AppNavigator';
 import { projectService } from '../../services/project.service';
 import { authService } from '../../services/auth.service';
 import { ProjectDto } from '../../types/project.types';
+import { User } from '../../types/auth.types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ListProjects'>;
 
@@ -22,6 +23,11 @@ export default function ListProjectsScreen({ navigation }: Props) {
   const [projects, setProjects] = useState<ProjectDto[]>([]);
   const [filter, setFilter] = useState('');
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    authService.getUser().then(setUser);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -50,21 +56,49 @@ export default function ListProjectsScreen({ navigation }: Props) {
     p.projectName.toLowerCase().includes(filter.toLowerCase())
   );
 
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
+
   const renderProject = ({ item }: { item: ProjectDto }) => (
     <TouchableOpacity
       style={styles.projectCard}
       onPress={() => navigation.navigate('DetailProject', { idProject: item.idProject })}
     >
       <Text style={styles.projectName}>{item.projectName}</Text>
-      <Text style={styles.projectDescription}>{item.projectDescription}</Text>
-      <Text style={styles.projectLocation}>
-        {item.cityName}, {item.provinceName}
-      </Text>
+      {item.projectDescription ? (
+        <Text style={styles.projectDescription}>{item.projectDescription}</Text>
+      ) : null}
+      <View style={styles.projectMeta}>
+        <View style={styles.projectMetaRow}>
+          <Text style={styles.metaLabel}>Tipo</Text>
+          <Text style={styles.metaValue}>{item.projectType || '—'}</Text>
+        </View>
+        <View style={styles.projectMetaRow}>
+          <Text style={styles.metaLabel}>Ubicación</Text>
+          <Text style={styles.metaValue}>{item.cityName}, {item.provinceName}</Text>
+        </View>
+        <View style={styles.projectMetaRow}>
+          <Text style={styles.metaLabel}>Inicio</Text>
+          <Text style={styles.metaValue}>{formatDate(item.startDate)}</Text>
+        </View>
+        <View style={styles.projectMetaRow}>
+          <Text style={styles.metaLabel}>Fin</Text>
+          <Text style={styles.metaValue}>{formatDate(item.endDate)}</Text>
+        </View>
+      </View>
     </TouchableOpacity>
   );
 
   return (
     <View style={styles.container}>
+      {user && (
+        <View style={styles.welcomeBar}>
+          <Text style={styles.welcomeText}>Hola, {user.firstName || user.email}</Text>
+        </View>
+      )}
       <View style={styles.header}>
         <TextInput
           style={styles.searchInput}
@@ -96,6 +130,8 @@ export default function ListProjectsScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
+  welcomeBar: { backgroundColor: '#388E3C', paddingVertical: 10, paddingHorizontal: 16 },
+  welcomeText: { color: '#fff', fontSize: 15, fontWeight: '600' },
   header: {
     flexDirection: 'row',
     padding: 12,
@@ -128,7 +164,10 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   projectName: { fontSize: 17, fontWeight: 'bold', color: '#333' },
-  projectDescription: { fontSize: 14, color: '#666', marginTop: 4 },
-  projectLocation: { fontSize: 13, color: '#888', marginTop: 6 },
+  projectDescription: { fontSize: 14, color: '#666', marginTop: 4, marginBottom: 8 },
+  projectMeta: { marginTop: 8, gap: 4 },
+  projectMetaRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  metaLabel: { fontSize: 13, color: '#888', flex: 1 },
+  metaValue: { fontSize: 13, color: '#444', fontWeight: '500', flex: 2, textAlign: 'right' },
   emptyText: { textAlign: 'center', color: '#888', marginTop: 40, fontSize: 15 },
 });
