@@ -133,7 +133,13 @@ export default function DetailTreeScreen({ route, navigation }: Props) {
 
         {/* Ubicacion */}
         <SectionHeader title="Ubicacion" color="#1976D2" />
-        <InfoRow label="Barrio:" value={tree.neighborhoodName || 'N/A'} />
+        {projectType?.toLowerCase() === 'muestreo' && !tree.neighborhoodName ? (
+          <View style={styles.neighborhoodWarning}>
+            <Text style={styles.neighborhoodWarningText}>⚠️ Sin barrio asignado</Text>
+          </View>
+        ) : (
+          <InfoRow label="Barrio:" value={tree.neighborhoodName || 'N/A'} />
+        )}
         {tree.cityBlock ? <InfoRow label="Manzana:" value={tree.cityBlock} /> : null}
         <InfoRow label="Latitud:" value={tree.latitude || 'N/A'} />
         <InfoRow label="Longitud:" value={tree.longitude || 'N/A'} />
@@ -245,4 +251,6 @@ const styles = StyleSheet.create({
   updateButton: { backgroundColor: '#1976D2', paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
   createButton: { backgroundColor: '#388E3C', paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
   buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  neighborhoodWarning: { paddingVertical: 8, paddingHorizontal: 4, marginBottom: 4 },
+  neighborhoodWarningText: { fontSize: 14, color: '#E65100', fontWeight: 'bold' },
 });

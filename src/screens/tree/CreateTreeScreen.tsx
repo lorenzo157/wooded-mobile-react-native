@@ -94,7 +94,8 @@ function FormField({ label, children, row }: { label?: string; children: React.R
 }
 
 export default function CreateTreeScreen({ route, navigation }: Props) {
-  const { idProject, idTree: routeIdTree, projectType } = route.params;
+  const { idProject, idTree: routeIdTree, projectType: rawProjectType } = route.params;
+  const projectType = rawProjectType?.toLowerCase() ?? '';
   const idTree = routeIdTree === 0 ? null : routeIdTree;
   const isUpdate = idTree !== null;
   const operation = isUpdate ? 'Actualizacion' : 'Registracion';
@@ -189,6 +190,23 @@ export default function CreateTreeScreen({ route, navigation }: Props) {
   // Interventions
   const [potentialDamage, setPotentialDamage] = useState<number | null>(null);
   const [interventionsNames, setInterventionsNames] = useState<string[]>([]);
+
+  // Warn before leaving with unsaved data
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (submitting) return;
+      e.preventDefault();
+      Alert.alert(
+        'Descartar cambios',
+        'Si volvés atrás perderás toda la información cargada hasta el momento. ¿Deseás continuar?',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Salir', style: 'destructive', onPress: () => navigation.dispatch(e.data.action) },
+        ]
+      );
+    });
+    return unsubscribe;
+  }, [navigation, submitting]);
 
   // Load existing tree data if editing
   useEffect(() => {
@@ -410,6 +428,7 @@ export default function CreateTreeScreen({ route, navigation }: Props) {
     const missing: string[] = [];
     if (!address) missing.push('Dirección');
     if (latitude == null || longitude == null) missing.push('Ubicación (GPS)');
+    if (projectType === 'muestreo' && !treesInTheBlock) missing.push('Árboles en la cuadra');
     if (isMissing || isDead) return missing;
 
     if (!perimeter) missing.push('Perímetro');
@@ -423,7 +442,6 @@ export default function CreateTreeScreen({ route, navigation }: Props) {
     if (potentialDamage == null) missing.push('Potencial de daño al caerse');
     if (!nothingUnderTree && !useUnderTheTree) missing.push('Uso debajo del árbol');
     if (!nothingUnderTree && frequencyUse == null) missing.push('Frecuencia de uso');
-    if (projectType === 'muestreo' && !treesInTheBlock) missing.push('Árboles en la cuadra');
     if (projectType !== 'muestreo' && !treeValue) missing.push('Valor del árbol');
  
     return missing;

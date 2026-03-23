@@ -99,4 +99,5 @@ export interface SimplyReadTreeDto {
   datetime: Date;
   treeValue: string | null;
   risk: number | null;
+  neighborhoodName: string | null;
 }

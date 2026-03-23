@@ -18,7 +18,8 @@ import { SimplyReadTreeDto } from '../../types/tree.types';
 type Props = NativeStackScreenProps<RootStackParamList, 'ListTrees'>;
 
 export default function ListTreesScreen({ route, navigation }: Props) {
-  const { idProject, projectType } = route.params;
+  const { idProject, projectType: rawProjectType } = route.params;
+  const projectType = rawProjectType?.toLowerCase() ?? '';
   const [trees, setTrees] = useState<SimplyReadTreeDto[]>([]);
   const [filter, setFilter] = useState('');
   const [loading, setLoading] = useState(true);
@@ -65,6 +66,11 @@ export default function ListTreesScreen({ route, navigation }: Props) {
         </View>
       </View>
       <Text style={styles.treeAddress}>{item.address}</Text>
+      {projectType === 'muestreo' && (
+        item.neighborhoodName
+          ? <Text style={styles.treeNeighborhood}>🏘️ {item.neighborhoodName}</Text>
+          : <Text style={styles.treeNeighborhoodWarning}>⚠️ Sin barrio asignado</Text>
+      )}
       {item.datetime && (
         <Text style={styles.treeDate}>
           {new Date(item.datetime).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
@@ -137,6 +143,8 @@ const styles = StyleSheet.create({
   },
   riskText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
   treeAddress: { fontSize: 14, color: '#555' },
+  treeNeighborhood: { fontSize: 13, color: '#555', marginTop: 2 },
+  treeNeighborhoodWarning: { fontSize: 13, color: '#E65100', fontWeight: 'bold', marginTop: 2 },
   treeDate: { fontSize: 13, color: '#888', marginTop: 2 },
   treeValue: { fontSize: 13, color: '#888', marginTop: 2 },
   emptyText: { textAlign: 'center', color: '#888', marginTop: 40, fontSize: 15 },
