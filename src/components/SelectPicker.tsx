@@ -1,5 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, FlatList, StyleSheet } from 'react-native';
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Modal,
+  FlatList,
+  StyleSheet,
+} from "react-native";
 
 interface Option {
   label: string;
@@ -14,23 +21,33 @@ interface SelectPickerProps {
   multiple?: boolean;
 }
 
-export default function SelectPicker({ label, options, value, onChange, multiple }: SelectPickerProps) {
+export default function SelectPicker({
+  label,
+  options,
+  value,
+  onChange,
+  multiple,
+}: SelectPickerProps) {
   const [visible, setVisible] = useState(false);
 
   const getDisplayText = () => {
     if (multiple) {
-      if (!value || value.length === 0) return 'Seleccionar...';
+      if (!value || value.length === 0) return "Seleccionar...";
       return `${value.length} seleccionado(s)`;
     }
     const selected = options.find((o) => o.value === value);
-    return selected?.label || 'Seleccionar...';
+    return selected?.label || "Seleccionar...";
   };
 
   const handleSelect = (optionValue: any) => {
     if (multiple) {
       const current = value || [];
       const exists = current.includes(optionValue);
-      onChange(exists ? current.filter((v: any) => v !== optionValue) : [...current, optionValue]);
+      onChange(
+        exists
+          ? current.filter((v: any) => v !== optionValue)
+          : [...current, optionValue],
+      );
     } else {
       onChange(optionValue);
       setVisible(false);
@@ -45,8 +62,13 @@ export default function SelectPicker({ label, options, value, onChange, multiple
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
-      <TouchableOpacity style={styles.selector} onPress={() => setVisible(true)}>
-        <Text style={[styles.selectorText, !value && styles.placeholder]}>{getDisplayText()}</Text>
+      <TouchableOpacity
+        style={styles.selector}
+        onPress={() => setVisible(true)}
+      >
+        <Text style={[styles.selectorText, !value && styles.placeholder]}>
+          {getDisplayText()}
+        </Text>
       </TouchableOpacity>
 
       <Modal visible={visible} transparent animationType="slide">
@@ -58,17 +80,28 @@ export default function SelectPicker({ label, options, value, onChange, multiple
               keyExtractor={(item, i) => String(i)}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={[styles.option, isSelected(item.value) && styles.optionSelected]}
+                  style={[
+                    styles.option,
+                    isSelected(item.value) && styles.optionSelected,
+                  ]}
                   onPress={() => handleSelect(item.value)}
                 >
-                  <Text style={[styles.optionText, isSelected(item.value) && styles.optionTextSelected]}>
+                  <Text
+                    style={[
+                      styles.optionText,
+                      isSelected(item.value) && styles.optionTextSelected,
+                    ]}
+                  >
                     {item.label}
                   </Text>
                 </TouchableOpacity>
               )}
             />
             {multiple && (
-              <TouchableOpacity style={styles.closeButton} onPress={() => setVisible(false)}>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setVisible(false)}
+              >
                 <Text style={styles.closeButtonText}>OK</Text>
               </TouchableOpacity>
             )}
@@ -81,17 +114,47 @@ export default function SelectPicker({ label, options, value, onChange, multiple
 
 const styles = StyleSheet.create({
   container: { marginBottom: 8 },
-  label: { color: '#555', fontSize: 13, marginBottom: 4 },
-  selector: { borderBottomWidth: 1, borderBottomColor: '#ddd', paddingVertical: 10 },
-  selectorText: { fontSize: 16, color: '#333' },
-  placeholder: { color: '#999' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-  modalContent: { backgroundColor: '#fff', borderRadius: 12, maxHeight: '70%', padding: 16 },
-  modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 12, color: '#333' },
-  option: { paddingVertical: 12, paddingHorizontal: 8, borderBottomWidth: 0.5, borderBottomColor: '#eee' },
-  optionSelected: { backgroundColor: '#E8F5E9' },
-  optionText: { fontSize: 15, color: '#333' },
-  optionTextSelected: { color: '#388E3C', fontWeight: 'bold' },
-  closeButton: { backgroundColor: '#388E3C', padding: 14, borderRadius: 8, alignItems: 'center', marginTop: 12 },
-  closeButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  label: { color: "#555", fontSize: 13, marginBottom: 4 },
+  selector: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#ddd",
+    paddingVertical: 10,
+  },
+  selectorText: { fontSize: 16, color: "#333" },
+  placeholder: { color: "#999" },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    maxHeight: "70%",
+    padding: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 12,
+    color: "#333",
+  },
+  option: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#eee",
+  },
+  optionSelected: { backgroundColor: "#E8F5E9" },
+  optionText: { fontSize: 15, color: "#333" },
+  optionTextSelected: { color: "#388E3C", fontWeight: "bold" },
+  closeButton: {
+    backgroundColor: "#388E3C",
+    padding: 14,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 12,
+  },
+  closeButtonText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
 });

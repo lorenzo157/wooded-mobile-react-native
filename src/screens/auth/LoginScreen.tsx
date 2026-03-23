@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,16 +11,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-} from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../navigation/AppNavigator';
-import { authService } from '../../services/auth.service';
+} from "react-native";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../../navigation/AppNavigator";
+import { authService } from "../../services/auth.service";
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
+type Props = NativeStackScreenProps<RootStackParamList, "Login">;
 
 export default function LoginScreen({ navigation }: Props) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
@@ -28,7 +28,7 @@ export default function LoginScreen({ navigation }: Props) {
 
   useEffect(() => {
     authService.checkAuth().then((authenticated) => {
-      if (authenticated) navigation.replace('ListProjects');
+      if (authenticated) navigation.replace("ListProjects");
     });
   }, []);
 
@@ -42,15 +42,15 @@ export default function LoginScreen({ navigation }: Props) {
     setLoading(true);
     try {
       await authService.login(email, password);
-      navigation.replace('ListProjects');
+      navigation.replace("ListProjects");
     } catch (error: any) {
-      let errorMessage = 'Error desconocido';
-      if (error?.error?.message === 'Invalid credentials') {
-        errorMessage = 'Credenciales incorrectas.';
+      let errorMessage = "Error desconocido";
+      if (error?.error?.message === "Invalid credentials") {
+        errorMessage = "Credenciales incorrectas.";
       } else if (error?.status === 0 || !error?.status) {
-        errorMessage = 'No se pudo conectar con el servidor.';
+        errorMessage = "No se pudo conectar con el servidor.";
       }
-      Alert.alert('Error', errorMessage);
+      Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
     }
@@ -59,13 +59,17 @@ export default function LoginScreen({ navigation }: Props) {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.card}>
           {/* Logo */}
           <View style={styles.logoContainer}>
-            <Image source={require('../../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+            <Image
+              source={require("../../../assets/logo.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
             <Text style={styles.appTitle}>Yvira</Text>
             <Text style={styles.subtitle}>¡Bienvenido!</Text>
           </View>
@@ -102,11 +106,13 @@ export default function LoginScreen({ navigation }: Props) {
               style={styles.eyeButton}
               onPress={() => setShowPassword(!showPassword)}
             >
-              <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁'}</Text>
+              <Text style={styles.eyeIcon}>{showPassword ? "🙈" : "👁"}</Text>
             </TouchableOpacity>
           </View>
           {passwordTouched && !isPasswordValid && (
-            <Text style={styles.errorText}>Contraseña requerida (mín. 6 caracteres)</Text>
+            <Text style={styles.errorText}>
+              Contraseña requerida (mín. 6 caracteres)
+            </Text>
           )}
 
           {/* Actions */}
@@ -116,7 +122,10 @@ export default function LoginScreen({ navigation }: Props) {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.loginButton, !isFormValid && styles.loginButtonDisabled]}
+              style={[
+                styles.loginButton,
+                !isFormValid && styles.loginButtonDisabled,
+              ]}
               onPress={handleLogin}
               disabled={!isFormValid || loading}
             >
@@ -136,25 +145,25 @@ export default function LoginScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     padding: 20,
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 12,
     padding: 24,
     elevation: 4,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
   },
   logoContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 24,
   },
   logo: {
@@ -164,19 +173,19 @@ const styles = StyleSheet.create({
   },
   appTitle: {
     fontSize: 32,
-    fontWeight: '600',
-    color: 'green',
+    fontWeight: "600",
+    color: "green",
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 18,
-    color: '#888',
+    color: "#888",
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
+    borderBottomColor: "#ddd",
     marginBottom: 8,
   },
   input: {
@@ -191,33 +200,33 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   errorText: {
-    color: '#f44336',
+    color: "#f44336",
     fontSize: 13,
     marginBottom: 8,
     paddingLeft: 4,
   },
   actionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: 16,
   },
   forgotText: {
-    color: '#1976D2',
+    color: "#1976D2",
     fontSize: 13,
   },
   loginButton: {
-    backgroundColor: '#388E3C',
+    backgroundColor: "#388E3C",
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
   },
   loginButtonDisabled: {
-    backgroundColor: '#a5d6a7',
+    backgroundColor: "#a5d6a7",
   },
   loginButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: "#fff",
+    fontWeight: "bold",
     fontSize: 15,
   },
 });

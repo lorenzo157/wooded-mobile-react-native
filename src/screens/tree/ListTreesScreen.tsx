@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -8,26 +8,26 @@ import {
   ActivityIndicator,
   Alert,
   TouchableOpacity,
-} from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../navigation/AppNavigator';
-import { treeService } from '../../services/tree.service';
-import { SimplyReadTreeDto } from '../../types/tree.types';
+} from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../../navigation/AppNavigator";
+import { treeService } from "../../services/tree.service";
+import { SimplyReadTreeDto } from "../../types/tree.types";
 
-type Props = NativeStackScreenProps<RootStackParamList, 'ListTrees'>;
+type Props = NativeStackScreenProps<RootStackParamList, "ListTrees">;
 
 export default function ListTreesScreen({ route, navigation }: Props) {
   const { idProject, projectType: rawProjectType } = route.params;
-  const projectType = rawProjectType?.toLowerCase() ?? '';
+  const projectType = rawProjectType?.toLowerCase() ?? "";
   const [trees, setTrees] = useState<SimplyReadTreeDto[]>([]);
-  const [filter, setFilter] = useState('');
+  const [filter, setFilter] = useState("");
   const [loading, setLoading] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
       loadTrees();
-    }, [idProject])
+    }, [idProject]),
   );
 
   const loadTrees = async () => {
@@ -36,44 +36,64 @@ export default function ListTreesScreen({ route, navigation }: Props) {
       const data = await treeService.getTreesByProjectId(idProject);
       setTrees(data);
     } catch {
-      Alert.alert('Error', 'No se pudieron cargar los árboles.');
+      Alert.alert("Error", "No se pudieron cargar los árboles.");
     } finally {
       setLoading(false);
     }
   };
 
   const filteredTrees = trees.filter((t) =>
-    t.idTree.toString().includes(filter)
+    t.idTree.toString().includes(filter),
   );
 
   const getRiskColor = (risk: number | null) => {
-    if (risk === null) return '#888';
-    if (risk <= 1) return '#4CAF50';
-    if (risk <= 2) return '#FFC107';
-    if (risk <= 3) return '#FF9800';
-    return '#f44336';
+    if (risk === null) return "#888";
+    if (risk <= 1) return "#4CAF50";
+    if (risk <= 2) return "#FFC107";
+    if (risk <= 3) return "#FF9800";
+    return "#f44336";
   };
 
   const renderTree = ({ item }: { item: SimplyReadTreeDto }) => (
     <TouchableOpacity
       style={styles.treeCard}
-      onPress={() => navigation.navigate('DetailTree', { idTree: item.idTree, idProject, projectType })}
+      onPress={() =>
+        navigation.navigate("DetailTree", {
+          idTree: item.idTree,
+          idProject,
+          projectType,
+        })
+      }
     >
       <View style={styles.treeHeader}>
         <Text style={styles.treeId}>#{item.idTree}</Text>
-        <View style={[styles.riskBadge, { backgroundColor: getRiskColor(item.risk) }]}>
-          <Text style={styles.riskText}>Riesgo: {item.risk ?? '-'}</Text>
+        <View
+          style={[
+            styles.riskBadge,
+            { backgroundColor: getRiskColor(item.risk) },
+          ]}
+        >
+          <Text style={styles.riskText}>Riesgo: {item.risk ?? "-"}</Text>
         </View>
       </View>
       <Text style={styles.treeAddress}>{item.address}</Text>
-      {projectType === 'muestreo' && (
-        item.neighborhoodName
-          ? <Text style={styles.treeNeighborhood}>🏘️ {item.neighborhoodName}</Text>
-          : <Text style={styles.treeNeighborhoodWarning}>⚠️ Sin barrio asignado</Text>
-      )}
+      {projectType === "muestreo" &&
+        (item.neighborhoodName ? (
+          <Text style={styles.treeNeighborhood}>
+            🏘️ {item.neighborhoodName}
+          </Text>
+        ) : (
+          <Text style={styles.treeNeighborhoodWarning}>
+            ⚠️ Sin barrio asignado
+          </Text>
+        ))}
       {item.datetime && (
         <Text style={styles.treeDate}>
-          {new Date(item.datetime).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+          {new Date(item.datetime).toLocaleDateString("es-AR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          })}
         </Text>
       )}
       {item.treeValue && (
@@ -110,9 +130,9 @@ export default function ListTreesScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  container: { flex: 1, backgroundColor: "#f5f5f5" },
   searchInput: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     margin: 12,
     borderRadius: 8,
     paddingHorizontal: 12,
@@ -123,29 +143,39 @@ const styles = StyleSheet.create({
   loader: { marginTop: 40 },
   list: { padding: 12 },
   treeCard: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 10,
     padding: 14,
     marginBottom: 10,
     elevation: 2,
   },
   treeHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 6,
   },
-  treeId: { fontSize: 16, fontWeight: 'bold', color: '#333' },
+  treeId: { fontSize: 16, fontWeight: "bold", color: "#333" },
   riskBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
-  riskText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
-  treeAddress: { fontSize: 14, color: '#555' },
-  treeNeighborhood: { fontSize: 13, color: '#555', marginTop: 2 },
-  treeNeighborhoodWarning: { fontSize: 13, color: '#E65100', fontWeight: 'bold', marginTop: 2 },
-  treeDate: { fontSize: 13, color: '#888', marginTop: 2 },
-  treeValue: { fontSize: 13, color: '#888', marginTop: 2 },
-  emptyText: { textAlign: 'center', color: '#888', marginTop: 40, fontSize: 15 },
+  riskText: { color: "#fff", fontSize: 12, fontWeight: "bold" },
+  treeAddress: { fontSize: 14, color: "#555" },
+  treeNeighborhood: { fontSize: 13, color: "#555", marginTop: 2 },
+  treeNeighborhoodWarning: {
+    fontSize: 13,
+    color: "#E65100",
+    fontWeight: "bold",
+    marginTop: 2,
+  },
+  treeDate: { fontSize: 13, color: "#888", marginTop: 2 },
+  treeValue: { fontSize: 13, color: "#888", marginTop: 2 },
+  emptyText: {
+    textAlign: "center",
+    color: "#888",
+    marginTop: 40,
+    fontSize: 15,
+  },
 });

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,20 +8,20 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
-} from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../navigation/AppNavigator';
-import { projectService } from '../../services/project.service';
-import { authService } from '../../services/auth.service';
-import { ProjectDto } from '../../types/project.types';
-import { User } from '../../types/auth.types';
+} from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../../navigation/AppNavigator";
+import { projectService } from "../../services/project.service";
+import { authService } from "../../services/auth.service";
+import { ProjectDto } from "../../types/project.types";
+import { User } from "../../types/auth.types";
 
-type Props = NativeStackScreenProps<RootStackParamList, 'ListProjects'>;
+type Props = NativeStackScreenProps<RootStackParamList, "ListProjects">;
 
 export default function ListProjectsScreen({ navigation }: Props) {
   const [projects, setProjects] = useState<ProjectDto[]>([]);
-  const [filter, setFilter] = useState('');
+  const [filter, setFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
 
@@ -32,7 +32,7 @@ export default function ListProjectsScreen({ navigation }: Props) {
   useFocusEffect(
     useCallback(() => {
       loadProjects();
-    }, [])
+    }, []),
   );
 
   const loadProjects = async () => {
@@ -41,7 +41,7 @@ export default function ListProjectsScreen({ navigation }: Props) {
       const data = await projectService.getAssignedProjects();
       setProjects(data);
     } catch (error) {
-      Alert.alert('Error', 'No se pudieron cargar los proyectos.');
+      Alert.alert("Error", "No se pudieron cargar los proyectos.");
     } finally {
       setLoading(false);
     }
@@ -49,23 +49,29 @@ export default function ListProjectsScreen({ navigation }: Props) {
 
   const handleLogout = async () => {
     await authService.logout();
-    navigation.replace('Login');
+    navigation.replace("Login");
   };
 
   const filteredProjects = projects.filter((p) =>
-    p.projectName.toLowerCase().includes(filter.toLowerCase())
+    p.projectName.toLowerCase().includes(filter.toLowerCase()),
   );
 
   const formatDate = (dateStr: string) => {
-    if (!dateStr) return '—';
+    if (!dateStr) return "—";
     const d = new Date(dateStr);
-    return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return d.toLocaleDateString("es-AR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
   };
 
   const renderProject = ({ item }: { item: ProjectDto }) => (
     <TouchableOpacity
       style={styles.projectCard}
-      onPress={() => navigation.navigate('DetailProject', { idProject: item.idProject })}
+      onPress={() =>
+        navigation.navigate("DetailProject", { idProject: item.idProject })
+      }
     >
       <Text style={styles.projectName}>{item.projectName}</Text>
       {item.projectDescription ? (
@@ -74,11 +80,13 @@ export default function ListProjectsScreen({ navigation }: Props) {
       <View style={styles.projectMeta}>
         <View style={styles.projectMetaRow}>
           <Text style={styles.metaLabel}>Tipo</Text>
-          <Text style={styles.metaValue}>{item.projectType || '—'}</Text>
+          <Text style={styles.metaValue}>{item.projectType || "—"}</Text>
         </View>
         <View style={styles.projectMetaRow}>
           <Text style={styles.metaLabel}>Ubicación</Text>
-          <Text style={styles.metaValue}>{item.cityName}, {item.provinceName}</Text>
+          <Text style={styles.metaValue}>
+            {item.cityName}, {item.provinceName}
+          </Text>
         </View>
         <View style={styles.projectMetaRow}>
           <Text style={styles.metaLabel}>Inicio</Text>
@@ -96,7 +104,9 @@ export default function ListProjectsScreen({ navigation }: Props) {
     <View style={styles.container}>
       {user && (
         <View style={styles.welcomeBar}>
-          <Text style={styles.welcomeText}>Hola, {user.firstName || user.email}</Text>
+          <Text style={styles.welcomeText}>
+            Hola, {user.firstName || user.email}
+          </Text>
         </View>
       )}
       <View style={styles.header}>
@@ -129,18 +139,22 @@ export default function ListProjectsScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  welcomeBar: { backgroundColor: '#388E3C', paddingVertical: 10, paddingHorizontal: 16 },
-  welcomeText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  container: { flex: 1, backgroundColor: "#f5f5f5" },
+  welcomeBar: {
+    backgroundColor: "#388E3C",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  welcomeText: { color: "#fff", fontSize: 15, fontWeight: "600" },
   header: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: 12,
     gap: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   searchInput: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -148,26 +162,42 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   logoutButton: {
-    backgroundColor: '#d32f2f',
+    backgroundColor: "#d32f2f",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
   },
-  logoutText: { color: '#fff', fontWeight: 'bold' },
+  logoutText: { color: "#fff", fontWeight: "bold" },
   loader: { marginTop: 40 },
   list: { padding: 12 },
   projectCard: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 10,
     padding: 16,
     marginBottom: 12,
     elevation: 2,
   },
-  projectName: { fontSize: 17, fontWeight: 'bold', color: '#333' },
-  projectDescription: { fontSize: 14, color: '#666', marginTop: 4, marginBottom: 8 },
+  projectName: { fontSize: 17, fontWeight: "bold", color: "#333" },
+  projectDescription: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 4,
+    marginBottom: 8,
+  },
   projectMeta: { marginTop: 8, gap: 4 },
-  projectMetaRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  metaLabel: { fontSize: 13, color: '#888', flex: 1 },
-  metaValue: { fontSize: 13, color: '#444', fontWeight: '500', flex: 2, textAlign: 'right' },
-  emptyText: { textAlign: 'center', color: '#888', marginTop: 40, fontSize: 15 },
+  projectMetaRow: { flexDirection: "row", justifyContent: "space-between" },
+  metaLabel: { fontSize: 13, color: "#888", flex: 1 },
+  metaValue: {
+    fontSize: 13,
+    color: "#444",
+    fontWeight: "500",
+    flex: 2,
+    textAlign: "right",
+  },
+  emptyText: {
+    textAlign: "center",
+    color: "#888",
+    marginTop: 40,
+    fontSize: 15,
+  },
 });

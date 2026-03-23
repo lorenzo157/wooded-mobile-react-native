@@ -1,7 +1,7 @@
-import { API } from '../constants/API';
-import { LoginResponse, DecodedToken, User } from '../types/auth.types';
-import { storageService } from './storage.service';
-import { jwtDecode } from 'jwt-decode';
+import { API } from "../constants/API";
+import { LoginResponse, DecodedToken, User } from "../types/auth.types";
+import { storageService } from "./storage.service";
+import { jwtDecode } from "jwt-decode";
 
 export const authService = {
   async login(email: string, password: string): Promise<LoginResponse> {
@@ -10,8 +10,8 @@ export const authService = {
     let response: Response;
     try {
       response = await fetch(`${API}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
         signal: controller.signal,
       });
@@ -27,8 +27,8 @@ export const authService = {
     }
 
     const data: LoginResponse = await response.json();
-    await storageService.set('token', data.access_token);
-    await storageService.set('user', data.user);
+    await storageService.set("token", data.access_token);
+    await storageService.set("user", data.user);
     return data;
   },
 
@@ -37,21 +37,21 @@ export const authService = {
   },
 
   async getUser(): Promise<User | null> {
-    return storageService.get<User>('user');
+    return storageService.get<User>("user");
   },
 
   async getToken(): Promise<string | null> {
-    return storageService.get<string>('token');
+    return storageService.get<string>("token");
   },
 
   async checkAuth(): Promise<boolean> {
-    const token = await storageService.get<string>('token');
+    const token = await storageService.get<string>("token");
     if (!token) return false;
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 5000);
       const response = await fetch(`${API}/auth/check`, {
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}` },
         signal: controller.signal,
       }).finally(() => clearTimeout(timeout));
       const data = await response.json();

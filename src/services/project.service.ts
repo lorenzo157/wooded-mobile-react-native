@@ -1,5 +1,5 @@
-import { ProjectDto } from '../types/project.types';
-import { apiService } from './api.service';
+import { ProjectDto } from "../types/project.types";
+import { apiService } from "./api.service";
 
 export const projectService = {
   async getAssignedProjects(): Promise<ProjectDto[]> {

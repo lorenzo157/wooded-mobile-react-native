@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
-import { Accelerometer } from 'expo-sensors';
-import { Alert } from 'react-native';
+import { useState, useEffect, useRef } from "react";
+import { Accelerometer } from "expo-sensors";
+import { Alert } from "react-native";
 
 interface AccelerometerData {
   x: number;
@@ -15,13 +15,16 @@ export function useAccelerometer(componentId: string) {
   const [data, setData] = useState<AccelerometerData>({ x: 0, y: 0, z: 0 });
   const [isMeasuring, setIsMeasuring] = useState(false);
   const [blocked, setBlocked] = useState(false);
-  const subscriptionRef = useRef<ReturnType<typeof Accelerometer.addListener> | null>(null);
+  const subscriptionRef = useRef<ReturnType<
+    typeof Accelerometer.addListener
+  > | null>(null);
 
   // Poll activeComponent to update disabled state
   // This is simpler and more reliable than useSyncExternalStore in RN
   useEffect(() => {
     const interval = setInterval(() => {
-      const isBlocked = activeComponent !== null && activeComponent !== componentId;
+      const isBlocked =
+        activeComponent !== null && activeComponent !== componentId;
       setBlocked(isBlocked);
     }, 300);
     return () => clearInterval(interval);
@@ -32,7 +35,10 @@ export function useAccelerometer(componentId: string) {
   const start = async () => {
     const available = await Accelerometer.isAvailableAsync();
     if (!available) {
-      Alert.alert('Error', 'El acelerometro no esta disponible en este dispositivo.');
+      Alert.alert(
+        "Error",
+        "El acelerometro no esta disponible en este dispositivo.",
+      );
       return false;
     }
     if (activeComponent && activeComponent !== componentId) return false;
@@ -88,7 +94,7 @@ export function calculateHeight(
   z: number,
   distance: number,
   userHeight: number,
-  faceHeight: number = 0.3
+  faceHeight: number = 0.3,
 ): number {
   const heightPear = userHeight - faceHeight;
   const magnitude = Math.sqrt(x ** 2 + y ** 2 + z ** 2);
@@ -105,7 +111,7 @@ export function calculateDistance(
   y: number,
   z: number,
   userHeight: number,
-  faceHeight: number = 0.3
+  faceHeight: number = 0.3,
 ): number {
   const heightPear = userHeight - faceHeight;
   const magnitude = Math.sqrt(x ** 2 + y ** 2 + z ** 2);

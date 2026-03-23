@@ -1,8 +1,9 @@
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from "expo-secure-store";
 
 export const storageService = {
   async set(key: string, value: any): Promise<void> {
-    const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+    const stringValue =
+      typeof value === "string" ? value : JSON.stringify(value);
     await SecureStore.setItemAsync(key, stringValue);
   },
 
@@ -21,7 +22,7 @@ export const storageService = {
   },
 
   async clear(): Promise<void> {
-    await SecureStore.deleteItemAsync('token');
-    await SecureStore.deleteItemAsync('user');
+    await SecureStore.deleteItemAsync("token");
+    await SecureStore.deleteItemAsync("user");
   },
 };
